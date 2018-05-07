@@ -1,0 +1,110 @@
+########################################################################################################################
+# Author: Enders Kong                                                                                                  #
+# This is meant to be a basic equalizer for .wav files. It functions by taking a .csv file called FreqGain.csv with    #
+# (frequency, gain) pairs and altering said frequencies to match the gains mapped to it.                               #
+########################################################################################################################
+
+# for reverb dsp function try following:
+# for (int i = 0; i < length; i++)
+#   out += i
+#   out += i * some time measured decay
+# try, prime vals of i, and make for two channel audio
+
+
+# TODO: perhaps implement a less obtuse input method than a .csv
+# TODO: make use with stereo sound
+# TODO: make gui, or export data to other language with better gui workability
+# TODO: make it work with windows's native audio stream, as is, only works with .wav files passed in
+# TODO: implement filters
+# for "real time" processing try following:
+#Recording Thread:
+#   1.) Record a buffer
+#   2.) Push the data on the Deque
+#   3.) Repeat from 1
+
+#Main Process:
+#   1.) If the Deque has buffers then
+#   2.) Pull a buffer from the Deque
+#   3.) Process it
+#   4.) Repeat from 1
+
+# or, alternatively, offload to arduino acting as passthrough for usb audio?
+
+
+
+
+import csv
+import time
+import pyaudio
+import sys
+import math
+import wave
+import struct
+import scipy as sp
+from scipy import signal
+
+
+
+# dict of frequencies mapped to gains to modify them by
+# allows for an essentially infinite number of frequencies to be modified, and dict implementation ensures that no
+# no duplicates are allowed
+FreqGain = {}
+
+# parses a csv of which frequency vals to modify and the gain by which to modify them by
+# FreqGain.csv should be formatted per row as follows: freq, gain
+def parseFreqGain():
+    global FreqGain
+    with open("FreqGain.csv", "rb") as csvfile:
+        filin = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        for row in filin:
+            frequency, gain = row
+            FreqGain[frequency] = gain
+
+class implementFilterEquations():
+    def __init__(self):
+        playfile = "test.wav"                                               # TODO: change to use an actual input method
+        self.wf = wave.open(playfile, "rb")                                 # open .wav file
+        # shelving and peak filters, adapted from audio eq cookbook
+        # set cutoff frequencies for low and high shelf
+        self.lowFreqShelving = 500
+        self.highFreqShelving = 10000
+        # set gain for shelving filters
+        self.dbGainShelving = 0
+        # low shelving constant(s):
+        lowVar = math.tan(math.pi * self.lowFreqShelving / self.wf.getframerate())  # getframerate() returns sample rate
+        # high shelving constant(s):
+        highVar = math.tan(math.pi * self.highFreqShelving / self.wf.getframerate())
+        shelvingCoeff = 10 ** (self.dbGainShelving / 20)
+        # shelving filters' equations:
+        self.b0Low = (1 + math.sqrt(2 * shelvingCoeff) * lowVar + shelvingCoeff * (lowVar ** 2)) /\
+                     (1 + math.sqrt(2) * lowVar + (lowVar ** 2))
+        self.b0High = (shelvingCoeff + math.sqrt(2 * shelvingCoeff) * highVar + (highVar ** 2)) /\
+                      (1 + math.sqrt(2) * highVar + (highVar ** 2))
+        self.b1Low = (2 * (shelvingCoeff * (lowVar ** 2) - 1)) / (1 + math.sqrt(2) * lowVar + (lowVar ** 2))
+        self.b1High = (2 * ((highVar ** 2) - shelvingCoeff)) / (1 + math.sqrt(2) * highVar + (highVar ** 2))
+        self.b2Low = (1 - math.sqrt(2) * lowVar + (lowVar ** 2)) / (1 + math.sqrt(2) * lowVar + (lowVar ** 2))
+        self.b2High = (shelvingCoeff - math.sqrt(2 * shelvingCoeff) * highVar + (highVar ** 2)) /\
+                      (1 + math.sqrt(2) * highVar + (highVar ** 2))
+        # skip a0 for both high and low filters
+        self.a1Low = (2 * ((lowVar ** 2) - 1)) / (1 + math.sqrt(2) * lowVar + (lowVar ** 2))
+        self.a1High = (2 * ((highVar ** 2) - 1)) / (1 + math.sqrt(2) * highVar + (highVar ** 2))
+        self.a2Low = (1 - math.sqrt(2) * lowVar + (lowVar ** 2)) / (1 + math.sqrt(2 * lowVar) + (lowVar ** 2))
+        self.a2High = (1 - math.sqrt(2) * highVar + (highVar ** 2)) / (1 + math.sqrt(2) * highVar + (highVar ** 2))
+        # set peak filter frequencies
+        self.peakFreq = 20000
+        # set gain for peak filter
+        self.dbGainPeak = 1
+        self.peakConst = 0                                                  # TODO: update val
+        # peak filter constant(s)
+        peakVar = math.tan(math.pi * self.dbGainPeak / self.wf.getframerate())
+        peakCoeff = 10 ** (self.dbGainPeak / 20)
+        # peak filter's equations:
+        self.b0Peak = (1 + (peakCoeff / self.peakConst) * peakVar + (peakVar ** 2)) /\
+                      (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
+        self.b1Peak = (2 * ((peakVar ** 2) - 1)) / (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
+        self.b2Peak = (1 - (peakCoeff / self.peakConst) * peakVar + (peakVar ** 2)) /\
+                      (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
+        # once again, no a0
+        self.a1Peak = (2 * ((peakVar **2) - 1)) / (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
+        self.a2peak = (1 - (1 / self.peakConst) * peakVar + (peakVar ** 2)) / (1 + (1/self.peakConst) * peakVar + (peakVar ** 2))
+
