@@ -48,6 +48,7 @@ from scipy import signal
 # dict of frequencies mapped to gains to modify them by
 # allows for an essentially infinite number of frequencies to be modified, and dict implementation ensures that no
 # no duplicates are allowed
+# However, current implementation is a three band eq, so currently only supports 3 dict entries.
 FreqGain = {}
 
 # parses a csv of which frequency vals to modify and the gain by which to modify them by
@@ -55,7 +56,7 @@ FreqGain = {}
 def parseFreqGain():
     global FreqGain
     with open("FreqGain.csv", "rb") as csvfile:
-        filin = csv.reader(csvfile, delimiter=' ', quotechar='|')
+        filin = csv.reader(csvfile, delimiter=' ', quotechar='|')           # generic csv parser
         for row in filin:
             frequency, gain = row
             FreqGain[frequency] = gain
@@ -64,6 +65,7 @@ class implementFilterEquations():
     def __init__(self):
         playfile = "test.wav"                                               # TODO: change to use an actual input method
         self.wf = wave.open(playfile, "rb")                                 # open .wav file
+        self.wfNumChannels = self.wf.getnchannels()                         # get number of channels, should be mono
         # shelving and peak filters, adapted from audio eq cookbook
         # set cutoff frequencies for low and high shelf
         self.lowFreqShelving = 500
@@ -75,6 +77,7 @@ class implementFilterEquations():
         # high shelving constant(s):
         highVar = math.tan(math.pi * self.highFreqShelving / self.wf.getframerate())
         shelvingCoeff = 10 ** (self.dbGainShelving / 20)
+        self.a0 = 1
         # shelving filters' equations:
         self.b0Low = (1 + math.sqrt(2 * shelvingCoeff) * lowVar + shelvingCoeff * (lowVar ** 2)) /\
                      (1 + math.sqrt(2) * lowVar + (lowVar ** 2))
@@ -106,5 +109,29 @@ class implementFilterEquations():
                       (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
         # once again, no a0
         self.a1Peak = (2 * ((peakVar **2) - 1)) / (1 + (1 / self.peakConst) * peakVar + (peakVar ** 2))
-        self.a2peak = (1 - (1 / self.peakConst) * peakVar + (peakVar ** 2)) / (1 + (1/self.peakConst) * peakVar + (peakVar ** 2))
+        self.a2peak = (1 - (1 / self.peakConst) * peakVar + (peakVar ** 2)) /\
+                      (1 + (1/self.peakConst) * peakVar + (peakVar ** 2))
 
+def implementFilters(self):
+    # start audio stream                                                      TODO: fix to initialize with proper vars
+    wavFileOpen = pyaudio.PyAudio()
+    wavFile = wavFileOpen.open(format="FORMAT", channels="CHANNELS", rate="RATE", input="True",
+                               frames_per_buffer="CHUNK")
+    chunkSize = 0                                                           # TODO: find suitable chunk size
+    # chunks for each part of filter
+    chunks = [0 for n in range(chunkSize)]
+    self.chunksLow = chunks
+    self.chunksHigh = chunks
+    self.chunksPeak = chunks
+    chunksInFile = int(math.floor(self.wf.getnframes / chunkSize))
+    # sort for ease of readability
+    self.bLow = [self.b0Low, self.b1Low, self.b2Low]
+    self.aLow = [self.a0, self.a1Low, self.a2Low]
+    self.bHigh = [self.b0High, self.b1High, self.b2High]
+    self.aHigh = [self.a0, self.a1High, self.a2High]
+    self.bPeak = [self.b0Peak, self.b1Peak, self.b2Peak]
+    self.aPeak = [self.a0, self.a1Peak, self.a2Peak]
+    for i in range(chunksInFile):
+        chunks = self.wf.readframes(chunkSize)
+        buffer = struct.unpack ("h" * chunkSize, chunks)
+        temp = buffer
