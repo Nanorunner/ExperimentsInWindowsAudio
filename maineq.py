@@ -60,7 +60,7 @@ def parseFreqGain():
 
 class implementFilterEquations():
     def __init__(self):
-        playfile = "test.wav"  # TODO: change to use an actual input method
+        playfile = "test.wav"                                               # TODO: change to use an actual input method
         self.wf = wave.open(playfile, "rb")  # open .wav file
         self.wfNumChannels = self.wf.getnchannels()  # get number of channels, should be mono
         # shelving and peak filters, adapted from audio eq cookbook
@@ -94,7 +94,7 @@ class implementFilterEquations():
         self.peakFreq = 20000
         # set gain for peak filter
         self.dbGainPeak = 1
-        self.peakConst = 0  # TODO: update val
+        self.peakConst = 0                                                  # TODO: update val
         # peak filter constant(s)
         peakVar = math.tan(math.pi * self.dbGainPeak / self.wf.getframerate())
         peakCoeff = 10 ** (self.dbGainPeak / 20)
@@ -139,7 +139,7 @@ def implementFilters(self):
         self.highFilterVar = sp.signal.lfilter(self.b0High, self.aHigh, self.lowFilterVar)
         self.peakFilterVar = sp.signal.lfilter(self.bPeak, self.aPeak, self.highFilterVar)
         temp = self.peakFilterVar
-        temp = limitToXBits(temp, foo)  # TODO: set foo to correct depth
+        temp = limitToXBits(temp, foo)                                      # TODO: set foo to correct depth
         stri = struct.pack('h' * chunkSize, *temp)
         wavFile.write(stri)
         # shelving and peak filters, adapted from audio eq cookbook
@@ -173,7 +173,7 @@ def implementFilters(self):
         self.peakFreq = allFreq[1]
         # set gain for peak filter
         self.dbGainPeak = 1
-        self.peakConst = 0  # TODO: update val
+        self.peakConst = 0                                                  # TODO: update val
         # peak filter constant(s)
         peakVar = math.tan(math.pi * self.dbGainPeak / self.wf.getframerate())
         peakCoeff = 10 ** (self.dbGainPeak / 20)
