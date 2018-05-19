@@ -202,8 +202,8 @@ def implementFilters(self):
 def limitToXBits(n, bits):
     x = 2 ** bits
     for i in range(len(n)):
-        if n[i] > (x / 2):
-            n[i] = (x / 2)
+        if n[i] > ((x / 2) - 1):
+            n[i] = ((x / 2) - 1)
         elif n[i] < (-1 * x / 2):
             n[i] = (-1 * x / 2)
     return n
