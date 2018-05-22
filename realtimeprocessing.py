@@ -8,6 +8,8 @@
 from pyaudio import PyAudio
 import threading
 
+
+# TODO: update chunks1 val
 chunks1 = 0
 # opening and initializing audio streams, should be using .wav files
 wavStreamOpen = PyAudio()
