@@ -115,8 +115,8 @@ def implementFilters(self):
     # start audio stream                                                      TODO: fix to initialize with proper vars
     wavFileOpen = pyaudio.PyAudio()
     wavFile = wavFileOpen.open(format="FORMAT", channels="CHANNELS", rate="RATE", input="True",
-                               frames_per_buffer="CHUNK")
-    chunkSize = 0  # TODO: find suitable chunk size
+                               frames_per_buffer=1024)
+    chunkSize = 1024
     # chunks for each part of filter
     chunks = [0 for n in range(chunkSize)]
     self.chunksLow = chunks
@@ -139,7 +139,7 @@ def implementFilters(self):
         self.highFilterVar = sp.signal.lfilter(self.b0High, self.aHigh, self.lowFilterVar)
         self.peakFilterVar = sp.signal.lfilter(self.bPeak, self.aPeak, self.highFilterVar)
         temp = self.peakFilterVar
-        temp = limitToXBits(temp, foo)                                      # TODO: set foo to correct depth
+        temp = limitToXBits(temp, 1024)
         stri = struct.pack('h' * chunkSize, *temp)
         wavFile.write(stri)
         # shelving and peak filters, adapted from audio eq cookbook
