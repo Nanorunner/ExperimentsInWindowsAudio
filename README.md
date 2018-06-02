@@ -4,3 +4,5 @@ maineq.py is meant to be a basic equalizer for .wav files. It functions by takin
 As is, it only works with mono .wav files passed through and needs to be tweaked to function with the Windows audio stream <br />
 This particular file is written with Python scipy and pyaudio.<br /><br />
 realtimeprocessing.py is a very basic framework with two implementations of real time audio processing, one using the native functions in pyaudio, and the other using double buffering and threading to modify and write to two buffers at the same time and then swap them and repeat until stream ends. If it's not working for whatever reason make sure you updated all the placeholder values to what you need them to be.<br /><br />
+
+showAudioDeviceIndicies displays the indicies of the first 100 audio dievices on your corrent machine, for use with pyaudio<br /><br />
